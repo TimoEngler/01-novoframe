@@ -1,9 +1,8 @@
-// Global type definitions for the app
-
+// Type definitions
 export interface User {
-  id: string;
+  id: number;
+  username: string;
   email: string;
-  name?: string;
 }
 
 export interface AuthState {
@@ -17,6 +16,5 @@ export interface AuthState {
 export type RootStackParamList = {
   Home: undefined;
   Login: undefined;
-  // Add more screens as needed
+  Register: undefined;
 };
-

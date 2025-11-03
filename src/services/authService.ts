@@ -1,26 +1,31 @@
-// Authentication service
-// This will be implemented once API documentation is provided
 import * as SecureStore from 'expo-secure-store';
-import { STORAGE_KEYS } from '../constants';
+import { STORAGE_KEYS, API_BASE_URL } from '../constants';
+import { apiClient } from '../utils/api';
 import { User } from '../types';
 
 export interface LoginCredentials {
+  username: string;
+  password: string;
+}
+
+export interface RegisterCredentials {
+  username: string;
   email: string;
   password: string;
 }
 
 export interface AuthResponse {
-  token: string;
+  access_token: string;
+  refresh_token: string;
   user: User;
 }
 
 class AuthService {
-  // Store auth token securely
-  async storeToken(token: string): Promise<void> {
-    await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, token);
+  async storeTokens(accessToken: string, refreshToken: string): Promise<void> {
+    await SecureStore.setItemAsync(STORAGE_KEYS.AUTH_TOKEN, accessToken);
+    await SecureStore.setItemAsync(STORAGE_KEYS.REFRESH_TOKEN, refreshToken);
   }
 
-  // Get stored auth token
   async getToken(): Promise<string | null> {
     try {
       return await SecureStore.getItemAsync(STORAGE_KEYS.AUTH_TOKEN);
@@ -30,17 +35,10 @@ class AuthService {
     }
   }
 
-  // Remove auth token
-  async removeToken(): Promise<void> {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
-  }
-
-  // Store user data
   async storeUserData(user: User): Promise<void> {
     await SecureStore.setItemAsync(STORAGE_KEYS.USER_DATA, JSON.stringify(user));
   }
 
-  // Get stored user data
   async getUserData(): Promise<User | null> {
     try {
       const userData = await SecureStore.getItemAsync(STORAGE_KEYS.USER_DATA);
@@ -51,24 +49,53 @@ class AuthService {
     }
   }
 
-  // Remove user data
-  async removeUserData(): Promise<void> {
-    await SecureStore.deleteItemAsync(STORAGE_KEYS.USER_DATA);
-  }
-
-  // Login function - to be implemented with API
   async login(credentials: LoginCredentials): Promise<AuthResponse> {
-    // TODO: Implement login API call once documentation is provided
-    throw new Error('Login not yet implemented - awaiting API documentation');
+    try {
+      const response = await apiClient.post<AuthResponse>(
+        `${API_BASE_URL}/api/auth/login`,
+        credentials
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Login failed';
+      throw new Error(errorMessage);
+    }
   }
 
-  // Logout function
+  async register(credentials: RegisterCredentials): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<AuthResponse>(
+        `${API_BASE_URL}/api/auth/register`,
+        credentials
+      );
+      return response.data;
+    } catch (error: any) {
+      const errorMessage =
+        error.response?.data?.error ||
+        error.response?.data?.message ||
+        'Registration failed';
+      throw new Error(errorMessage);
+    }
+  }
+
   async logout(): Promise<void> {
-    await this.removeToken();
-    await this.removeUserData();
+    try {
+      const token = await this.getToken();
+      if (token) {
+        await apiClient.post(`${API_BASE_URL}/api/auth/logout`, {});
+      }
+    } catch (error) {
+      console.error('Error during logout:', error);
+    } finally {
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.AUTH_TOKEN);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.REFRESH_TOKEN);
+      await SecureStore.deleteItemAsync(STORAGE_KEYS.USER_DATA);
+    }
   }
 
-  // Check if user is authenticated
   async isAuthenticated(): Promise<boolean> {
     const token = await this.getToken();
     return !!token;

@@ -1,11 +1,12 @@
-// Custom hook for authentication state management
-import { useState, useEffect, useContext, createContext, ReactNode } from 'react';
+import React, { useState, useEffect, useContext, createContext, ReactNode } from 'react';
 import { AuthState, User } from '../types';
 import { authService } from '../services/authService';
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<void>;
+  login: (username: string, password: string) => Promise<void>;
+  register: (username: string, email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  refreshAuth: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -18,7 +19,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     isLoading: true,
   });
 
-  // Check authentication status on mount
   useEffect(() => {
     checkAuthStatus();
   }, []);
@@ -54,15 +54,33 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (username: string, password: string) => {
     try {
       setAuthState((prev) => ({ ...prev, isLoading: true }));
-      const response = await authService.login({ email, password });
-      await authService.storeToken(response.token);
+      const response = await authService.login({ username, password });
+      await authService.storeTokens(response.access_token, response.refresh_token);
       await authService.storeUserData(response.user);
       setAuthState({
         user: response.user,
-        token: response.token,
+        token: response.access_token,
+        isAuthenticated: true,
+        isLoading: false,
+      });
+    } catch (error) {
+      setAuthState((prev) => ({ ...prev, isLoading: false }));
+      throw error;
+    }
+  };
+
+  const register = async (username: string, email: string, password: string) => {
+    try {
+      setAuthState((prev) => ({ ...prev, isLoading: true }));
+      const response = await authService.register({ username, email, password });
+      await authService.storeTokens(response.access_token, response.refresh_token);
+      await authService.storeUserData(response.user);
+      setAuthState({
+        user: response.user,
+        token: response.access_token,
         isAuthenticated: true,
         isLoading: false,
       });
@@ -86,12 +104,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const refreshAuth = async () => {
+    await checkAuthStatus();
+  };
+
   return (
     <AuthContext.Provider
       value={{
         ...authState,
         login,
+        register,
         logout,
+        refreshAuth,
       }}
     >
       {children}
