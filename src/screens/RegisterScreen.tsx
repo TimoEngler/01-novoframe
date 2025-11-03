@@ -53,7 +53,8 @@ export default function RegisterScreen({ navigation }: Props) {
       contentContainerStyle={styles.scrollContent}
       keyboardShouldPersistTaps="handled"
       showsVerticalScrollIndicator={false}
-      keyboardDismissMode="interactive"
+      keyboardDismissMode="on-drag"
+      maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
     >
       <View style={styles.content}>
           <View style={styles.header}>
@@ -73,6 +74,8 @@ export default function RegisterScreen({ navigation }: Props) {
                 value={username}
                 onChangeText={setUsername}
                 autoCapitalize="none"
+                textContentType="username"
+                autoComplete="username"
                 onFocus={() => setFocusedInput('username')}
                 onBlur={() => setFocusedInput(null)}
               />
@@ -184,12 +187,6 @@ const styles = StyleSheet.create({
   },
   inputFocused: {
     borderColor: colors.primary,
-    backgroundColor: colors.white,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
   },
   button: {
     height: 60,
